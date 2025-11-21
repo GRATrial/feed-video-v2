@@ -5,7 +5,11 @@
 
 const { MongoClient } = require('mongodb');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://estatedeliuser:estatedeli12345@cluster0.xwvmm93.mongodb.net/instagram_study?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is required');
+}
 const DB_NAME = 'instagram_study';
 
 // Collection mapping for each condition
