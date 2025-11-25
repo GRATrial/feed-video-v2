@@ -12,6 +12,11 @@
         return;
     }
     
+    // Set condition constant for this app
+    const condition = 'feed_video';
+    window.MongoTracker.condition = condition;
+    console.log('📊 [DEBUG] Condition set to:', condition);
+    
     if (!window.MongoTracker.isInitialized) {
         window.MongoTracker.initialize('feed_video');
     }
@@ -128,6 +133,14 @@
             videoState.playCount++;
             videoState.currentPlayStartTime = player.getCurrentTime();
             console.log('MongoFeedVideoTracker: Video playing, current time:', videoState.currentPlayStartTime);
+            
+            // Log video play event
+            if (window.MongoTracker.logEvent) {
+                window.MongoTracker.logEvent('video_play', {
+                    currentTime: videoState.currentPlayStartTime,
+                    duration: videoState.duration
+                });
+            }
         }
         
         // PAUSED (2)
@@ -141,6 +154,15 @@
                     console.log('MongoFeedVideoTracker: Video paused, watched:', watchedDuration, 's, total:', videoState.totalWatchTimeSeconds.toFixed(2), 's');
                     trackWatchTime(videoState.totalWatchTimeSeconds);
                 }
+            }
+            
+            // Log video pause event
+            if (window.MongoTracker.logEvent) {
+                const currentTime = player.getCurrentTime();
+                window.MongoTracker.logEvent('video_pause', {
+                    currentTime: currentTime,
+                    totalWatchTime: videoState.totalWatchTimeSeconds
+                });
             }
         }
         

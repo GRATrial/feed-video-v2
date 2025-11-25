@@ -20,6 +20,7 @@
     const API_BASE = getApiBaseUrl();
     const API_URL = `${API_BASE}/track`;
     const BATCH_API_URL = `${API_BASE}/track/batch`;
+    const LOG_API_URL = `${API_BASE}/log`;
     const BATCH_SIZE = 10;
     const BATCH_INTERVAL = 5000; // 5 seconds
     const RETRY_DELAY = 1000; // 1 second
@@ -30,15 +31,15 @@
         isInitialized: false,
         participantId: null,
         studyType: null,
+        condition: null,  // Condition name (feed_carousel, feed_video, etc.)
         sessionId: null,
         eventQueue: [],
-        batchTimer: null,
-        isCollectingPid: false  // Prevent multiple simultaneous PID prompts
+        batchTimer: null
     };
     
     /**
-     * Get participant ID (from URL or prompt)
-     * MongoDB-only tracking - no GA4 dependency
+     * Get participant ID from URL parameter (pid)
+     * No prompts - must come from Qualtrics URL
      */
     function getParticipantId() {
         // If we already have a participant ID, return it
@@ -47,67 +48,59 @@
             return window.MongoTracker.participantId;
         }
         
-        // Check URL parameter first
+        // Read pid from URL parameter (from Qualtrics)
         const urlParams = new URLSearchParams(window.location.search);
-        const prolificFromUrl = urlParams.get('PROLIFIC_ID');
+        const pidFromUrl = urlParams.get('pid');
         
-        if (prolificFromUrl) {
-            console.log('MongoTracker: Using PROLIFIC_ID from URL:', prolificFromUrl);
-            window.MongoTracker.participantId = prolificFromUrl;
-            return prolificFromUrl;
+        if (pidFromUrl) {
+            console.log('MongoTracker: Using pid from URL:', pidFromUrl);
+            window.MongoTracker.participantId = pidFromUrl.trim();
+            return window.MongoTracker.participantId;
         }
         
-        // Prevent multiple simultaneous prompts
-        if (window.MongoTracker.isCollectingPid) {
-            console.log('MongoTracker: PID collection already in progress, waiting...');
-            // Wait a bit and check again
-            let attempts = 0;
-            while (attempts < 20 && !window.MongoTracker.participantId) {
-                attempts++;
-                // Synchronous wait (not ideal but prevents multiple prompts)
-                const start = Date.now();
-                while (Date.now() - start < 100) {
-                    // Busy wait
-                }
-            }
-            // If still no ID after waiting, allow prompt
+        // If no pid in URL, use "unknown" (shouldn't happen in production)
+        console.warn('MongoTracker: No pid found in URL, using "unknown"');
+        window.MongoTracker.participantId = 'unknown';
+        return 'unknown';
+    }
+    
+    /**
+     * Log event to /api/log endpoint
+     * Sends pid, condition, eventType, and extra data
+     */
+    async function logEvent(eventType, extra = {}) {
+        const pid = window.MongoTracker.participantId || getParticipantId();
+        const condition = window.MongoTracker.condition;
+        
+        if (!condition) {
+            console.warn('MongoTracker: Condition not set, cannot log event');
+            return;
         }
         
-        // Clear any stored ID to ensure fresh session
         try {
-            localStorage.removeItem('mongo_participant_id');
-        } catch (e) {
-            // Fail silently
-        }
-        
-        // Prompt for participant ID
-        console.log('MongoTracker: Prompting for participant ID...');
-        window.MongoTracker.isCollectingPid = true;
-        
-        let prolificId = null;
-        while (!prolificId || prolificId.trim() === '') {
-            prolificId = prompt('⚠️ REQUIRED: Please enter your Participant ID to continue.\n\n(This cannot be skipped - press OK after entering your ID)');
+            const response = await fetch(LOG_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    pid: pid,
+                    condition: condition,
+                    eventType: eventType,
+                    extra: extra
+                })
+            });
             
-            if (prolificId === null) {
-                alert('❌ Participant ID is required to participate in this study.\n\nPlease enter your ID when prompted.');
-                continue;
+            if (response.ok) {
+                const result = await response.json();
+                console.log('MongoTracker: Event logged:', eventType, result);
+                return result;
+            } else {
+                console.warn('MongoTracker: Logging failed:', response.status);
             }
-            
-            if (prolificId.trim() === '') {
-                alert('❌ Please enter a valid Participant ID.\n\nEmpty entries are not allowed.');
-                continue;
-            }
-            
-            prolificId = prolificId.trim();
-            console.log('MongoTracker: User entered valid PROLIFIC_ID:', prolificId);
-            break;
+        } catch (error) {
+            console.error('MongoTracker: Logging error:', error);
         }
-        
-        window.MongoTracker.isCollectingPid = false;
-        window.MongoTracker.participantId = prolificId;
-        
-        // Don't store in localStorage - each session should be independent
-        return prolificId;
     }
     
     /**
@@ -236,6 +229,12 @@
         // Detect or set study type
         window.MongoTracker.studyType = studyType || detectStudyType();
         
+        // Set condition (should be set by app-specific tracker, but fallback to studyType)
+        if (!window.MongoTracker.condition) {
+            window.MongoTracker.condition = window.MongoTracker.studyType;
+        }
+        console.log('MongoTracker: Condition set to:', window.MongoTracker.condition);
+        
         // Generate session ID
         window.MongoTracker.sessionId = generateSessionId();
         
@@ -244,6 +243,13 @@
         
         // Start batch processing timer
         window.MongoTracker.batchTimer = setInterval(sendBatch, BATCH_INTERVAL);
+        
+        // Log page load event
+        logEvent('page_load', {
+            page_title: document.title,
+            referrer: document.referrer || null,
+            url: window.location.href
+        });
         
         // Track page view
         sendEvent('page_view', {
@@ -287,6 +293,7 @@
     // Expose API
     window.MongoTracker.initialize = initialize;
     window.MongoTracker.track = track;
+    window.MongoTracker.logEvent = logEvent;
     
     // Auto-initialize when DOM is ready
     if (document.readyState === 'loading') {

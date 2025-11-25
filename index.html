@@ -592,6 +592,16 @@
                     e.preventDefault();
                     const action = button.dataset.action;
                     
+                    // Log CTA click event
+                    if (window.MongoTracker && window.MongoTracker.logEvent) {
+                        window.MongoTracker.logEvent('cta_click', {
+                            buttonId: action,
+                            cta_type: action,
+                            post_type: 'video',
+                            post_id: 'nyu_feed_video_ad'
+                        });
+                    }
+                    
                     if (window.GALite && window.GALite.track) {
                         window.GALite.track('cta_click', {
                             cta_type: action,
