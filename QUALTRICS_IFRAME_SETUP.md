@@ -1,70 +1,114 @@
 # Qualtrics Iframe Setup Guide
 
-## Understanding the Permissions Policy Violations
+## Quick Setup for Qualtrics
 
-The browser warnings you're seeing are because the page is embedded in an iframe (Qualtrics) without the necessary permissions. These permissions are required for:
+### Step 1: Add the Iframe in Qualtrics
 
-- **autoplay**: YouTube videos need this to autoplay
-- **encrypted-media**: YouTube videos use DRM/encrypted content
-- **accelerometer/gyroscope**: Device orientation (usually not critical)
-- **clipboard-write**: Clipboard operations (usually not critical)
-
-## Solution: Add Permissions to Qualtrics Iframe
-
-When embedding the feed-video app in Qualtrics, you need to add the `allow` attribute to the iframe element.
-
-### In Qualtrics HTML/JavaScript:
+In your Qualtrics survey question, add this HTML code:
 
 ```html
 <iframe 
     src="https://feed-video-v2.vercel.app/?pid=${e://Field/PROLIFIC_PID}&condition=${e://Field/condition}"
     width="100%" 
-    height="800px"
+    height="900px"
+    frameborder="0"
+    scrolling="no"
     allow="autoplay; encrypted-media; accelerometer; gyroscope; clipboard-write; picture-in-picture"
-    allowfullscreen>
+    allowfullscreen
+    style="border: 1px solid #ddd; border-radius: 8px;">
 </iframe>
 ```
 
-### Or using Qualtrics' Rich Text Editor:
+### Step 2: Recommended Iframe Dimensions
 
-1. Go to the question where you want to embed the video
-2. Click "HTML View" or "Source" button
-3. Add the iframe with the `allow` attribute as shown above
+For best fit, use these dimensions:
+- **Height**: `900px` (recommended) or `800px` (minimum)
+- **Width**: `100%` (will fit the Qualtrics question width)
 
-### Alternative: Using Qualtrics JavaScript
+### Step 3: How to Add in Qualtrics
 
-If you're adding the iframe dynamically via JavaScript:
+#### Option A: Using HTML View
+1. Go to your survey question
+2. Click the **"HTML View"** or **"Source"** button in the rich text editor
+3. Paste the iframe code above
+4. Save the question
+
+#### Option B: Using JavaScript (Advanced)
+If you need to add it dynamically:
 
 ```javascript
-var iframe = document.createElement('iframe');
-iframe.src = 'https://feed-video-v2.vercel.app/?pid=${e://Field/PROLIFIC_PID}&condition=${e://Field/condition}';
-iframe.width = '100%';
-iframe.height = '800px';
-iframe.setAttribute('allow', 'autoplay; encrypted-media; accelerometer; gyroscope; clipboard-write; picture-in-picture');
-iframe.setAttribute('allowfullscreen', '');
-document.getElementById('your-container').appendChild(iframe);
+Qualtrics.SurveyEngine.addOnload(function() {
+    var iframe = document.createElement('iframe');
+    iframe.src = 'https://feed-video-v2.vercel.app/?pid=${e://Field/PROLIFIC_PID}&condition=${e://Field/condition}';
+    iframe.width = '100%';
+    iframe.height = '900px';
+    iframe.frameBorder = '0';
+    iframe.scrolling = 'no';
+    iframe.setAttribute('allow', 'autoplay; encrypted-media; accelerometer; gyroscope; clipboard-write; picture-in-picture');
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.style.border = '1px solid #ddd';
+    iframe.style.borderRadius = '8px';
+    
+    var container = this.getQuestionContainer();
+    var iframeDiv = document.createElement('div');
+    iframeDiv.style.textAlign = 'center';
+    iframeDiv.style.margin = '20px 0';
+    iframeDiv.appendChild(iframe);
+    container.appendChild(iframeDiv);
+});
 ```
 
-## What We've Already Fixed
+## Understanding the Permissions
 
-✅ Added `Permissions-Policy` meta tag to the HTML (requests permissions)
-✅ YouTube iframe already has `allow` attribute set correctly
+The `allow` attribute grants necessary permissions:
+- **autoplay**: Required for video playback (though we use manual play now)
+- **encrypted-media**: Required for YouTube videos (DRM content)
+- **accelerometer/gyroscope**: Device orientation (usually not critical)
+- **clipboard-write**: Clipboard operations (usually not critical)
+- **picture-in-picture**: Allows PiP mode
 
-## What You Need to Do
+## Troubleshooting
 
-⚠️ **Add the `allow` attribute to the Qualtrics iframe** - This is the most important step!
+### Content Doesn't Fit
+- Increase iframe height to `900px` or `1000px`
+- Check that `scrolling="no"` is set
+- Ensure `width="100%"` is used
 
-## Testing
+### Video Won't Play
+- Verify the `allow` attribute includes `autoplay` and `encrypted-media`
+- Check browser console for permission errors
+- Users can click the "▶ Play" button to start manually
 
-After adding the `allow` attribute in Qualtrics:
-1. Open the survey in a browser
-2. Open Developer Tools (F12)
-3. Check the Console tab
-4. The permission violations should be gone or reduced
+### PID Not Captured
+- Make sure Qualtrics field is set up correctly: `${e://Field/PROLIFIC_PID}`
+- Test the URL in a browser first: `https://feed-video-v2.vercel.app/?pid=TEST123`
+- Check that the field value is being substituted (not showing as literal `${e://Field/...}`)
 
-## Notes
+### Iframe Too Small/Large
+- Adjust the `height` attribute (try `800px`, `900px`, or `1000px`)
+- The content will scale to fit the iframe width automatically
 
-- The warnings are **non-blocking** - the video should still work, but autoplay might be restricted
-- If autoplay doesn't work, users can click the play button manually
-- The `encrypted-media` permission is required for YouTube videos to play properly
+## Testing Checklist
 
+- [ ] Iframe displays without scrollbars
+- [ ] Video loads and shows "▶ Play" button
+- [ ] Clicking play button starts the video
+- [ ] PID is captured correctly (check browser console)
+- [ ] No permission errors in browser console
+- [ ] Content fits within iframe boundaries
+
+## Current App Features
+
+✅ **No autoplay** - Video requires user click to play
+✅ **Play button overlay** - Shows "▶ Play" before video starts
+✅ **Iframe optimized** - Uses percentage-based sizing
+✅ **PID capture** - Reads from URL parameter
+✅ **MongoDB tracking** - All events logged to database
+
+## Support
+
+If you encounter issues:
+1. Check browser console (F12) for errors
+2. Verify iframe `src` URL is correct
+3. Test the app directly: `https://feed-video-v2.vercel.app/?pid=TEST123`
+4. Ensure Qualtrics field substitution is working
