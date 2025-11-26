@@ -600,6 +600,47 @@
                     console.log(`CTA clicked: ${action}`);
                 });
             });
+            
+            // Track "more" button (three dots in post header)
+            document.querySelectorAll('.post-options').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Track CTA click using MongoDB
+                    if (window.MongoTracker && window.MongoTracker.track) {
+                        window.MongoTracker.track('cta_click', {
+                            cta_type: 'more',
+                            action: 'more',
+                            post_type: 'feed_video',
+                            post_id: 'nyu_feed_video_ad',
+                            condition: 'feed_video'
+                        });
+                    }
+                    
+                    // Also log via logEvent for compatibility
+                    if (window.MongoTracker && window.MongoTracker.logEvent) {
+                        window.MongoTracker.logEvent('cta_click', {
+                            buttonId: 'more',
+                            cta_type: 'more',
+                            post_type: 'video',
+                            post_id: 'nyu_feed_video_ad'
+                        });
+                    }
+                    
+                    if (window.GALite && window.GALite.track) {
+                        window.GALite.track('cta_click', {
+                            cta_type: 'more',
+                            post_type: 'video',
+                            post_id: 'nyu_feed_video_ad',
+                            username: 'nyu_stern',
+                            content_type: 'sponsored_video',
+                            study_id: 'instagram_feed_video_study'
+                        });
+                    }
+                    
+                    console.log('CTA clicked: more');
+                });
+            });
         });
     </script>
 </body>
