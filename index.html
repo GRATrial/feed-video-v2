@@ -565,7 +565,18 @@
                     e.preventDefault();
                     const action = button.dataset.action;
                     
-                    // Log CTA click event
+                    // Log CTA click event using MongoDB
+                    if (window.MongoTracker && window.MongoTracker.track) {
+                        window.MongoTracker.track('cta_click', {
+                            cta_type: action,
+                            action: action,
+                            post_type: 'feed_video',
+                            post_id: 'nyu_feed_video_ad',
+                            condition: 'feed_video'
+                        });
+                    }
+                    
+                    // Also log via logEvent for compatibility
                     if (window.MongoTracker && window.MongoTracker.logEvent) {
                         window.MongoTracker.logEvent('cta_click', {
                             buttonId: action,
