@@ -406,6 +406,53 @@
             fill: white;
         }
 
+        /* Scroll Buttons */
+        .scroll-button {
+            position: fixed;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .scroll-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .scroll-button:active {
+            transform: scale(0.95);
+        }
+
+        .scroll-button-up {
+            bottom: 80px;
+        }
+
+        .scroll-button-down {
+            bottom: 20px;
+        }
+
+        .scroll-button.hidden {
+            display: none;
+        }
+
+        .scroll-button svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
     </style>
 </head>
 <body>
@@ -415,6 +462,18 @@
             <div class="tap-to-start-text">▶ Play</div>
             <div class="tap-to-start-subtext">Click to start the video</div>
         </div>
+
+        <!-- Scroll Buttons -->
+        <button class="scroll-button scroll-button-up hidden" id="scroll-up-btn" aria-label="Scroll up">
+            <svg viewBox="0 0 24 24">
+                <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+            </svg>
+        </button>
+        <button class="scroll-button scroll-button-down hidden" id="scroll-down-btn" aria-label="Scroll down">
+            <svg viewBox="0 0 24 24">
+                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+            </svg>
+        </button>
 
         <div class="main-content">
             <!-- Feed Page -->
@@ -591,6 +650,62 @@
                     console.log(`CTA clicked: ${action}`);
                 });
             });
+
+            // Scroll button functionality
+            const feedContainer = document.querySelector('.feed-container');
+            const scrollUpBtn = document.getElementById('scroll-up-btn');
+            const scrollDownBtn = document.getElementById('scroll-down-btn');
+
+            function updateScrollButtons() {
+                if (!feedContainer) return;
+
+                const scrollTop = feedContainer.scrollTop;
+                const scrollHeight = feedContainer.scrollHeight;
+                const clientHeight = feedContainer.clientHeight;
+                const maxScroll = scrollHeight - clientHeight;
+
+                // Show/hide scroll buttons based on scroll position
+                if (scrollTop > 50) {
+                    scrollUpBtn.classList.remove('hidden');
+                } else {
+                    scrollUpBtn.classList.add('hidden');
+                }
+
+                if (scrollTop < maxScroll - 50) {
+                    scrollDownBtn.classList.remove('hidden');
+                } else {
+                    scrollDownBtn.classList.add('hidden');
+                }
+            }
+
+            // Check scroll position on scroll
+            if (feedContainer) {
+                feedContainer.addEventListener('scroll', updateScrollButtons);
+                
+                // Check on load and resize
+                window.addEventListener('load', updateScrollButtons);
+                window.addEventListener('resize', updateScrollButtons);
+                
+                // Initial check
+                setTimeout(updateScrollButtons, 500);
+            }
+
+            // Scroll button click handlers
+            if (scrollUpBtn) {
+                scrollUpBtn.addEventListener('click', () => {
+                    if (feedContainer) {
+                        feedContainer.scrollBy({ top: -300, behavior: 'smooth' });
+                    }
+                });
+            }
+
+            if (scrollDownBtn) {
+                scrollDownBtn.addEventListener('click', () => {
+                    if (feedContainer) {
+                        feedContainer.scrollBy({ top: 300, behavior: 'smooth' });
+                    }
+                });
+            }
         });
     </script>
 </body>
