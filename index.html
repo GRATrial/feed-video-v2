@@ -50,6 +50,7 @@
         }
 
         html, body {
+            height: 100%;
             width: 100%;
             overflow-x: hidden;
             overflow-y: auto;
@@ -64,11 +65,13 @@
             line-height: 1.4;
             padding: 0;
             margin: 0;
+            height: 100%;
+            width: 100%;
         }
 
         .app-container {
             width: 100%;
-            min-height: 100%;
+            height: 100%;
             position: relative;
         }
 
@@ -77,27 +80,28 @@
             display: flex;
             flex-direction: column;
             width: 100%;
-            min-height: 100%;
+            height: 100%;
             position: relative;
         }
 
         /* Feed Page */
         .feed-page {
-            flex: 1;
             display: flex;
-            flex-direction: column;
-            background: #fafafa;
+            flex: 1;
         }
 
         .feed-container {
             max-width: 614px;
             margin: 0 auto;
             padding: 0;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+            background: #fff;
+            width: 100%;
+            height: 100%;
             overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             overflow-x: hidden;
+            position: relative;
         }
 
         /* Instagram Header */
@@ -208,6 +212,31 @@
 
         /* Mobile responsive media */
         @media (max-width: 480px) {
+            .feed-container {
+                max-width: 100vw;
+                width: 100vw;
+                margin: 0;
+                height: 100vh;
+                min-height: 100vh;
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+            }
+            
+            body {
+                height: 100vh;
+                min-height: 100vh;
+                overflow: hidden;
+            }
+            
+            .app-container {
+                height: 100vh;
+                min-height: 100vh;
+            }
+            
+            .main-content {
+                height: 100vh;
+                min-height: 100vh;
+            }
+            
             .post-image, .post-video {
                 width: 100%;
                 max-width: 100%;
@@ -216,11 +245,6 @@
             
             .post-media {
                 margin: 0 -16px;
-            }
-            
-            .feed-container {
-                max-width: 100%;
-                padding: 0;
             }
             
             .post {
