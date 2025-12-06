@@ -49,6 +49,9 @@
     // YouTube API ready flag
     let youTubeAPIReady = false;
     
+    // Periodic watch time tracking interval
+    let watchTimeInterval = null;
+    
     /**
      * Load YouTube iframe API
      */
@@ -104,8 +107,11 @@
         try {
             event.target.mute();
             console.log('MongoFeedVideoTracker: Video muted for autoplay');
+            // Start playing immediately (autoplay)
+            event.target.playVideo();
+            console.log('MongoFeedVideoTracker: Video started (autoplay)');
         } catch (error) {
-            console.error('MongoFeedVideoTracker: Error muting video:', error);
+            console.error('MongoFeedVideoTracker: Error muting/starting video:', error);
         }
         
         // Start milestone tracking
@@ -168,10 +174,16 @@
                     duration: videoState.duration
                 });
             }
+            
+            // Start periodic watch time tracking while playing
+            startPeriodicWatchTimeTracking();
         }
         
         // PAUSED (2)
         else if (state === YT.PlayerState.PAUSED) {
+            // Stop periodic tracking
+            stopPeriodicWatchTimeTracking();
+            
             // Track first interaction
             if (!videoState.firstInteractionTime) {
                 videoState.firstInteractionTime = Date.now();
@@ -204,6 +216,9 @@
         
         // ENDED (0)
         else if (state === YT.PlayerState.ENDED) {
+            // Stop periodic tracking
+            stopPeriodicWatchTimeTracking();
+            
             if (videoState.currentPlayStartTime !== null) {
                 const currentTime = player.getCurrentTime();
                 const watchedDuration = currentTime - videoState.currentPlayStartTime;
@@ -215,12 +230,25 @@
             
             videoState.completionCount++;
             const currentTime = player.getCurrentTime();
+            // Update max progress - video ended means they reached the end
             if (currentTime > videoState.maxProgressReached) {
                 videoState.maxProgressReached = currentTime;
             }
+            // Also set to duration if video fully completed
+            if (currentTime >= videoState.duration * 0.95) {
+                videoState.maxProgressReached = videoState.duration;
+            }
             
             console.log('MongoFeedVideoTracker: Video ended, total watch time:', videoState.totalWatchTimeSeconds.toFixed(2), 's');
+            
+            // Track final watch time
+            trackWatchTime(videoState.totalWatchTimeSeconds);
+            
+            // Track completion event
             trackVideoComplete();
+            
+            // Track summary when video ends
+            trackVideoSummary();
         }
     }
     
@@ -244,6 +272,69 @@
             watch_time_minutes: Math.round((totalSeconds / 60) * 100) / 100,
             condition: 'feed_video'
         });
+    }
+    
+    /**
+     * Start periodic watch time tracking while video is playing
+     */
+    function startPeriodicWatchTimeTracking() {
+        // Clear any existing interval
+        if (watchTimeInterval) {
+            clearInterval(watchTimeInterval);
+            watchTimeInterval = null;
+        }
+        
+        // Track watch time every 5 seconds while playing
+        watchTimeInterval = setInterval(() => {
+            if (!videoState.player || !videoState.isTrackingEnabled) {
+                stopPeriodicWatchTimeTracking();
+                return;
+            }
+            
+            try {
+                const playerState = videoState.player.getPlayerState();
+                if (playerState === YT.PlayerState.PLAYING) {
+                    // Calculate current watch time
+                    let currentWatchTime = videoState.totalWatchTimeSeconds;
+                    
+                    // Add current play session time
+                    if (videoState.currentPlayStartTime !== null) {
+                        const currentTime = videoState.player.getCurrentTime();
+                        const watchedDuration = currentTime - videoState.currentPlayStartTime;
+                        if (watchedDuration > 0) {
+                            currentWatchTime += watchedDuration;
+                        }
+                    }
+                    
+                    // Update max progress reached
+                    if (currentTime > videoState.maxProgressReached) {
+                        videoState.maxProgressReached = currentTime;
+                    }
+                    
+                    // Only track if watch time has increased
+                    if (currentWatchTime > videoState.lastReportedTime) {
+                        trackWatchTime(currentWatchTime);
+                        videoState.lastReportedTime = currentWatchTime;
+                    }
+                } else if (playerState === YT.PlayerState.PAUSED || playerState === YT.PlayerState.ENDED) {
+                    // Stop tracking when paused or ended
+                    stopPeriodicWatchTimeTracking();
+                }
+            } catch (error) {
+                console.error('MongoFeedVideoTracker: Error in periodic tracking:', error);
+                stopPeriodicWatchTimeTracking();
+            }
+        }, 5000); // Track every 5 seconds
+    }
+    
+    /**
+     * Stop periodic watch time tracking
+     */
+    function stopPeriodicWatchTimeTracking() {
+        if (watchTimeInterval) {
+            clearInterval(watchTimeInterval);
+            watchTimeInterval = null;
+        }
     }
     
     /**
@@ -362,6 +453,18 @@
             videoState.pauseStartTime = null;
         }
         
+        // Update max progress from current video position if player is available
+        if (videoState.player) {
+            try {
+                const currentTime = videoState.player.getCurrentTime();
+                if (currentTime > videoState.maxProgressReached) {
+                    videoState.maxProgressReached = currentTime;
+                }
+            } catch (error) {
+                // Player might not be available, use existing value
+            }
+        }
+        
         // Set session end time
         videoState.sessionEndTime = Date.now();
         
@@ -417,20 +520,23 @@
     }
     
     /**
-     * Enable tracking (called when tap-to-start is clicked)
+     * Enable tracking (autoplay enabled - video starts muted)
      */
     function enableTracking() {
         videoState.isTrackingEnabled = true;
-        console.log('MongoFeedVideoTracker: Tracking enabled');
+        console.log('MongoFeedVideoTracker: Tracking enabled (autoplay)');
         
-        // Start video and unmute when tracking is enabled
+        // Start video (already muted for autoplay)
         if (videoState.player) {
             try {
-                // Unmute first
-                videoState.player.unMute();
-                // Then play
-                videoState.player.playVideo();
-                console.log('MongoFeedVideoTracker: Video started and unmuted');
+                // Video should already be playing (autoplay), just ensure it's playing
+                const playerState = videoState.player.getPlayerState();
+                if (playerState !== YT.PlayerState.PLAYING) {
+                    videoState.player.playVideo();
+                    console.log('MongoFeedVideoTracker: Video started (autoplay)');
+                } else {
+                    console.log('MongoFeedVideoTracker: Video already playing (autoplay)');
+                }
             } catch (error) {
                 console.error('MongoFeedVideoTracker: Error starting video:', error);
             }
@@ -438,20 +544,13 @@
     }
     
     /**
-     * Wait for tap-to-start overlay
+     * Enable tracking immediately (autoplay enabled)
      */
     function waitForTapToStart() {
-        const tapOverlay = document.getElementById('tap-to-start-overlay');
-        if (tapOverlay) {
-            tapOverlay.addEventListener('click', () => {
-                enableTracking();
-            });
-        } else {
-            // If no overlay, enable tracking immediately
-            setTimeout(() => {
-                enableTracking();
-            }, 1000);
-        }
+        // Autoplay enabled - start tracking immediately
+        setTimeout(() => {
+            enableTracking();
+        }, 500);
     }
     
     /**

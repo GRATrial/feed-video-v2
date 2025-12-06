@@ -353,40 +353,7 @@
             letter-spacing: 0.2px;
         }
 
-        /* Tap to Start Overlay */
-        .tap-to-start-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            color: white;
-            text-align: center;
-            cursor: pointer;
-        }
-
-        .tap-to-start-overlay.hidden {
-            display: none;
-        }
-
-        .tap-to-start-text {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .tap-to-start-subtext {
-            font-size: 16px;
-            opacity: 0.8;
-            max-width: 300px;
-            line-height: 1.4;
-        }
+        /* Tap to Start Overlay - REMOVED (autoplay enabled) */
 
 
         /* Video Controls Overlay */
@@ -432,12 +399,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Tap to Start Overlay -->
-        <div class="tap-to-start-overlay" id="tap-to-start-overlay">
-            <div class="tap-to-start-text">▶ Play</div>
-            <div class="tap-to-start-subtext">Click to start the video</div>
-        </div>
-
         <div class="main-content">
             <!-- Feed Page -->
             <div class="feed-page">
@@ -483,7 +444,7 @@
                                     <iframe 
                                         id="nyuVideo"
                                         class="post-video" 
-                                        src="https://www.youtube.com/embed/GFj4m6JDc5s?enablejsapi=1&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1&loop=1&playlist=GFj4m6JDc5s&mute=1&autoplay=0"
+                                        src="https://www.youtube.com/embed/GFj4m6JDc5s?enablejsapi=1&controls=0&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1&loop=1&playlist=GFj4m6JDc5s&mute=1&autoplay=1"
                                         frameborder="0"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowfullscreen>
@@ -546,19 +507,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('NYU Feed Video Ad - DOM loaded');
             
-            // Tap to Start functionality
-            const tapToStartOverlay = document.getElementById('tap-to-start-overlay');
-            if (tapToStartOverlay) {
-                tapToStartOverlay.addEventListener('click', () => {
-                    console.log('Tap to start clicked - YouTube tracking enabled');
-                    tapToStartOverlay.classList.add('hidden');
-                    
-                    // Enable tracking and start video (handled by MongoDB tracker)
-                    if (window.VideoTracker && window.VideoTracker.enableTracking) {
-                        window.VideoTracker.enableTracking();
-                    }
-                });
-            }
+            // Autoplay enabled - tracking starts automatically
 
 
             // YouTube iframe mute toggle via overlay
